@@ -1,14 +1,6 @@
 <template>
   <div class="userinfo-container">
     <div class="userinfo-box">
-      <div class="header">
-        <div>
-          <h2 class="system-name">计算机科学与人工智能学院信息查询系统</h2>
-          <h3 class="title">教师信息查询</h3>
-        </div>
-        <button @click="handleLogout" class="logout-button">退出登录</button>
-      </div>
-      
       <div v-if="loading" class="loading-message">
         加载中...
       </div>
@@ -19,7 +11,10 @@
         
         <!-- 基础信息 -->
         <div class="info-section">
-          <h4 class="section-title">基本信息</h4>
+          <div class="section-header">
+            <h4 class="section-title">基本信息</h4>
+            <button @click="handleLogout" class="logout-button">退出登录</button>
+          </div>
           <div class="info-card">
             <div class="info-item">
               <span class="label">工作证号：</span>
@@ -377,33 +372,11 @@ export default {
   overflow: hidden;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.system-name {
-  margin: 0 0 10px 0;
-  font-size: 18px;
-  font-weight: 600;
-  opacity: 0.95;
-}
-
-.title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-}
-
 .logout-button {
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  background: #667eea;
   color: white;
-  border: 2px solid white;
+  border: none;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -412,7 +385,7 @@ export default {
 }
 
 .logout-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #5568d3;
 }
 
 .info-content {
