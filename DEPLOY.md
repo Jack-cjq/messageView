@@ -12,7 +12,10 @@
 
 ### 1. 连接到服务器
 ```bash
-ssh root@your-server-ip
+# 服务器IP: 114.132.158.25
+ssh ubuntu@114.132.158.25
+# 或使用 root 用户
+ssh root@114.132.158.25
 ```
 
 ### 2. 检查现有环境
@@ -106,7 +109,7 @@ git clone https://github.com/Jack-cjq/messageView.git .
 ### 方式二：使用 SCP 上传
 ```bash
 # 在本地执行（Windows PowerShell）
-scp -r D:\messageView root@your-server-ip:/var/www/
+scp -r D:\messageView ubuntu@114.132.158.25:/var/www/
 
 # 或使用 WinSCP、FileZilla 等工具上传
 ```
@@ -198,7 +201,9 @@ npm run build
 
 构建完成后，静态文件会在 `dist` 目录中。
 
-**注意**：如果使用子路径部署，需要修改 `vite.config.js` 添加 `base` 配置：
+**注意**：
+- **使用端口 8088（方案A）**：不需要修改 `vite.config.js`，直接构建即可
+- **使用子路径（方案B）**：需要修改 `vite.config.js` 添加 `base` 配置：
 ```javascript
 export default defineConfig({
   base: '/messageview/',  // 添加这行
@@ -217,12 +222,44 @@ sudo nano /etc/nginx/sites-available/messageview
 
 ### 2. 添加以下配置：
 
-**方案A：使用子路径（推荐，适合多项目共存）**
+**方案A：使用独立端口 8088（推荐，适合多项目共存）**
+```nginx
+# 创建新的 server 块，监听 8088 端口
+server {
+    listen 8088;
+    server_name 114.132.158.25;  # 服务器IP地址
+
+    # 前端静态文件
+    location / {
+        root /var/www/messageView/dist;
+        try_files $uri $uri/ /index.html;
+        index index.html;
+    }
+
+    # 后端 API 代理
+    location /api {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # 文件上传大小限制
+    client_max_body_size 10M;
+}
+```
+
+**方案B：使用子路径（备选方案）**
 ```nginx
 # 在现有的 server 块中添加，或创建新的 server 块
 server {
     listen 80;
-    server_name your-domain.com;  # 替换为你的域名或服务器IP
+    server_name 114.132.158.25;  # 服务器IP地址
 
     # 其他项目的配置...
     
@@ -253,7 +290,7 @@ server {
 ```nginx
 server {
     listen 80;
-    server_name messageview.your-domain.com;  # 子域名
+    server_name messageview.114.132.158.25;  # 子域名（如果有域名，替换为实际域名）
 
     # 前端静态文件
     location / {
@@ -380,14 +417,23 @@ pm2 info messageview-api
 ## 七、配置防火墙
 
 ```bash
-# 开放 80 和 443 端口（HTTP/HTTPS）
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
+# 如果使用 8088 端口（推荐方案）
+# Ubuntu/Debian 使用 ufw
+sudo ufw allow 8088/tcp
+sudo ufw reload
+
+# 或 CentOS/RHEL 使用 firewall-cmd
+sudo firewall-cmd --permanent --add-port=8088/tcp
 sudo firewall-cmd --reload
 
 # 或使用 iptables
-sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 8088 -j ACCEPT
+sudo iptables-save
+
+# 如果使用 80 和 443 端口（其他方案）
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
 ```
 
 ## 八、配置 HTTPS（可选，推荐）
@@ -406,15 +452,43 @@ sudo certbot --nginx -d your-domain.com
 sudo certbot renew --dry-run
 ```
 
-## 九、更新代码
+## 九、更新代码（重新部署）
 
-### 使用 Git 更新
+### 方法一：使用部署脚本（推荐）
 ```bash
 cd /var/www/messageView
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### 方法二：手动更新步骤
+```bash
+# 1. 进入项目目录
+cd /var/www/messageView
+
+# 2. 拉取最新代码
 git pull origin main
+
+# 3. 安装新依赖（如果有）
 npm install
+
+# 4. 重新构建前端
 npm run build
+
+# 5. 重启后端服务
 pm2 restart messageview-api
+
+# 6. 重新加载 Nginx（确保静态文件更新）
+sudo nginx -s reload
+
+# 7. 检查服务状态
+pm2 status
+pm2 logs messageview-api --lines 20
+```
+
+### 快速更新命令（一行）
+```bash
+cd /var/www/messageView && git pull origin main && npm install && npm run build && pm2 restart messageview-api && sudo nginx -s reload
 ```
 
 ## 十、常见问题排查

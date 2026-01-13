@@ -17,7 +17,7 @@ if [ -d ".git" ]; then
     git pull origin main
 fi
 
-# 2. 安装依赖
+# 2. 安装依赖（如果有新的依赖）
 echo "正在安装依赖..."
 npm install
 
@@ -29,7 +29,11 @@ npm run build
 echo "正在重启后端服务..."
 pm2 restart messageview-api || pm2 start server/index.js --name messageview-api
 
-# 5. 检查服务状态
+# 5. 重新加载 Nginx（确保静态文件更新）
+echo "正在重新加载 Nginx..."
+sudo nginx -s reload
+
+# 6. 检查服务状态
 echo "=========================================="
 echo "部署完成！服务状态："
 echo "=========================================="

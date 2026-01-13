@@ -37,6 +37,14 @@
               <span class="value">{{ userInfo.positionLevel }}</span>
             </div>
           </div>
+          
+          <!-- 合计 -->
+          <div v-if="userInfo.salary && userInfo.salary.total !== null && userInfo.salary.total !== undefined" class="total-section">
+            <div class="total-item">
+              <span class="total-label">合计</span>
+              <span class="total-value">{{ formatMoney(userInfo.salary.total) }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- 薪资明细 -->
@@ -235,14 +243,6 @@
               </div>
             </div>
             </div>
-
-            <!-- 合计 -->
-            <div class="total-section">
-            <div class="total-item">
-              <span class="total-label">合计：</span>
-              <span class="total-value">{{ formatMoney(userInfo.salary.total) }}</span>
-            </div>
-            </div>
           </div>
         </div>
       </div>
@@ -361,6 +361,10 @@ export default {
   min-height: 100vh;
   background: #f0f2f5;
   padding: 40px 20px;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .userinfo-box {
@@ -370,6 +374,8 @@ export default {
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .logout-button {
@@ -548,9 +554,10 @@ export default {
 }
 
 .total-section {
-  margin-top: 30px;
-  padding: 25px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
 }
 
@@ -561,15 +568,15 @@ export default {
 }
 
 .total-label {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: #475569;
 }
 
 .total-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .no-salary {
@@ -577,5 +584,89 @@ export default {
   padding: 40px;
   color: #999;
   font-size: 16px;
+}
+
+/* 移动端响应式样式 */
+@media (max-width: 768px) {
+  .userinfo-container {
+    padding: 16px 12px;
+  }
+
+  .userinfo-box {
+    border-radius: 8px;
+  }
+
+  .info-content {
+    padding: 20px 16px;
+  }
+
+  .info-card {
+    padding: 16px;
+  }
+
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .label {
+    min-width: auto;
+    font-size: 14px;
+  }
+
+  .value {
+    font-size: 14px;
+  }
+
+  .salary-card {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .salary-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .salary-value {
+    min-width: auto;
+    text-align: left;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .year-selector {
+    width: 100%;
+  }
+
+  .year-select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .userinfo-container {
+    padding: 12px 8px;
+  }
+
+  .info-content {
+    padding: 16px 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .group-title {
+    font-size: 16px;
+  }
 }
 </style>

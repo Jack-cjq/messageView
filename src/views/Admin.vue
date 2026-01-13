@@ -678,6 +678,11 @@ export default {
 
 .table-container {
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .users-table {
@@ -1016,6 +1021,10 @@ export default {
 @media (max-width: 768px) {
   .admin-container {
     padding: 16px;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .admin-header {
@@ -1034,11 +1043,20 @@ export default {
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100vw;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .users-table {
     min-width: 600px;
+    width: 100%;
   }
 }
 </style>
