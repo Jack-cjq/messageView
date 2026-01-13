@@ -8,7 +8,9 @@
     "preview": "vite preview",
     "server": "node server/index.js",
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
-    "import:users": "node server/scripts/importUsers.js"
+    "import:users": "node server/scripts/importUsers.js",
+    "start": "node server/index.js",
+    "start:pm2": "pm2 start server/index.js --name messageview-api"
   },
   "dependencies": {
     "cors": "^2.8.5",
