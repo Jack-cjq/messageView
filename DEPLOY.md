@@ -505,6 +505,29 @@ sudo systemctl status nginx
 sudo systemctl status mysql
 ```
 
+### 2. 查看端口运行情况
+```bash
+# 查看所有监听的端口（推荐使用 ss）
+sudo ss -tlnp
+
+# 或使用 netstat
+sudo netstat -tlnp
+
+# 查看特定端口
+sudo ss -tlnp | grep 8088  # 前端端口
+sudo ss -tlnp | grep 3001  # 后端端口
+sudo ss -tlnp | grep :80   # Nginx HTTP
+
+# 查看端口占用情况
+sudo lsof -i :8088
+sudo lsof -i :3001
+
+# 查看防火墙规则
+sudo ufw status verbose
+```
+
+详细说明请参考：`CHECK_PORTS.md`
+
 ### 2. 查看日志
 ```bash
 # PM2 日志
@@ -564,6 +587,48 @@ mysqldump -u root -p user_system > backup_$(date +%Y%m%d).sql
 # 恢复数据库
 mysql -u root -p user_system < backup_20240101.sql
 ```
+
+## 十四、完全删除项目（释放内存）
+
+### ⚠️ 删除前备份
+
+```bash
+# 1. 备份数据库（如果需要保留数据）
+mysqldump -u root -p user_system > /tmp/messageview_backup_$(date +%Y%m%d).sql
+
+# 2. 备份配置文件
+cp /var/www/messageView/server/.env /tmp/messageview_env_backup.txt 2>/dev/null
+```
+
+### 删除步骤
+
+```bash
+# 1. 停止并删除 PM2 服务
+pm2 stop messageview-api
+pm2 delete messageview-api
+
+# 2. 删除 Nginx 配置
+sudo rm /etc/nginx/sites-available/messageview
+sudo rm /etc/nginx/sites-enabled/messageview
+sudo nginx -s reload
+
+# 3. 删除项目文件
+sudo rm -rf /var/www/messageView
+
+# 4. 验证删除
+pm2 list | grep messageview
+sudo ss -tlnp | grep 8088
+ls -la /var/www | grep messageView
+```
+
+### 可选：删除数据库（谨慎操作）
+
+```bash
+# 如果不再需要数据库数据
+mysql -u root -p -e "DROP DATABASE IF EXISTS user_system;"
+```
+
+详细说明请参考：`STOP.md`
 
 ---
 

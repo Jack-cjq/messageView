@@ -34,41 +34,83 @@ async function importUsersFromExcel(filePath, year) {
     console.log('\n数据示例（前1条）:')
     console.log(data.slice(0, 1))
     
+    // 获取Excel文件中的所有列名（用于检测未匹配的字段）
+    const excelColumns = data.length > 0 ? Object.keys(data[0]) : []
+    console.log(`\nExcel文件中的列名（共${excelColumns.length}列）:`)
+    console.log(excelColumns.join(', '))
+    
     let successCount = 0
     let errorCount = 0
+    const matchedColumns = new Set() // 用于跟踪已匹配的列
     
     // 遍历数据并插入数据库
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       
       try {
-        // 根据Excel列名映射字段（支持多种可能的列名，不区分大小写）
-        const getField = (row, possibleNames, defaultValue = '') => {
+        // 根据Excel列名映射字段（支持多种可能的列名，不区分大小写，支持模糊匹配）
+        const getField = (row, possibleNames, defaultValue = '', fieldName = '') => {
+          // 获取所有Excel列名（用于模糊匹配）
+          const excelKeys = Object.keys(row)
+          
           for (const name of possibleNames) {
-            // 尝试精确匹配
+            // 1. 尝试精确匹配
             if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
               const value = String(row[name]).trim()
-              return value || defaultValue
+              if (value) {
+                matchedColumns.add(name)
+                return value
+              }
             }
-            // 尝试不区分大小写匹配
-            const lowerName = name.toLowerCase()
-            for (const key in row) {
-              if (key.toLowerCase() === lowerName) {
+            
+            // 2. 尝试不区分大小写精确匹配
+            const lowerName = name.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+            for (const key of excelKeys) {
+              const lowerKey = key.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+              if (lowerKey === lowerName) {
                 const value = String(row[key]).trim()
-                return value || defaultValue
+                if (value) {
+                  matchedColumns.add(key)
+                  return value
+                }
+              }
+            }
+            
+            // 3. 尝试包含匹配（去除特殊字符和空格后）
+            const nameKeywords = lowerName.replace(/[*×x]/g, '').replace(/\d+/g, '')
+            if (nameKeywords.length > 0) {
+              for (const key of excelKeys) {
+                const lowerKey = key.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '').replace(/[*×x]/g, '').replace(/\d+/g, '')
+                // 如果Excel列名包含关键词，或者关键词包含在Excel列名中
+                if (lowerKey.includes(nameKeywords) || nameKeywords.includes(lowerKey)) {
+                  const value = String(row[key]).trim()
+                  // 对于薪资字段，只匹配数值
+                  if (fieldName && fieldName.includes('salary')) {
+                    if (value && !isNaN(parseFloat(value))) {
+                      matchedColumns.add(key)
+                      return value
+                    }
+                  } else {
+                    if (value) {
+                      matchedColumns.add(key)
+                      return value
+                    }
+                  }
+                }
               }
             }
           }
+          
           return defaultValue
         }
         
         // 基础信息字段
-        const idCard = getField(row, ['身份证号', 'id_card', 'IDCard', '身份证', 'idCard', '身份证号码'])
-        const workId = getField(row, ['工作证号', '工号', 'work_id', 'WorkID', 'workId', '工号编号'])
+        const idCard = getField(row, ['身份证号', 'id_card', 'IDCard', '身份证', 'idCard', '身份证号码'], '', 'base')
+        const workId = getField(row, ['工作证号', '工号', 'work_id', 'WorkID', 'workId', '工号编号'], '', 'base')
         // name字段置为空（不读取Excel中的name字段）
         const name = null
-        const department = getField(row, ['部门', 'department', 'Department', '所属部门', 'dept'])
-        const positionLevel = getField(row, ['职级', 'position_level', 'PositionLevel', '职位', 'position', 'Position', '职务', '职称'])
+        const department = getField(row, ['部门', 'department', 'Department', '所属部门', 'dept'], '', 'base')
+        const positionLevel = getField(row, ['职级', 'position_level', 'PositionLevel', '职位', 'position', 'Position', '职务', '职称'], '', 'base')
         
         // 密码：使用身份证号后六位
         const finalPassword = idCard && idCard.length >= 6 ? idCard.slice(-6) : '123456'
@@ -142,133 +184,67 @@ async function importUsersFromExcel(filePath, year) {
           return isNaN(num) ? null : num
         }
         
-        // 使用传入的年份参数，而不是从Excel读取
-        const salaryYear = year
+        // 定义基础字段（这些字段不存储到dynamic_fields中）
+        // 使用Set存储已匹配的基础字段的原始键名
+        const matchedBaseFieldKeys = new Set()
         
-        // 科研相关
-        const researchPlatform = parseDecimal(getField(row, ['科研平台', 'research_platform', 'ResearchPlatform']))
-        const landmarkAchievement = parseDecimal(getField(row, ['标志性成果', 'landmark_achievement', 'LandmarkAchievement']))
-        const nonHighQualityResearch = parseDecimal(getField(row, ['非高质量科研*10', '非高质量科研', 'non_high_quality_research', 'NonHighQualityResearch']))
-        const highQualityResearchReward = parseDecimal(getField(row, ['高质量科研奖励*40', '高质量科研奖励', 'high_quality_research_reward', 'HighQualityResearchReward']))
-        
-        // 人事相关
-        const personnelAgency = parseDecimal(getField(row, ['人事代发', 'personnel_agency', 'PersonnelAgency']))
-        const enrollment = parseDecimal(getField(row, ['招生', 'enrollment', 'Enrollment']))
-        // 实验安全、暑假加班为同一个字段
-        const experimentSafetySummerOvertime = parseDecimal(getField(row, ['实验安全、暑假加班', '实验安全,暑假加班', 'experiment_safety_summer_overtime', 'ExperimentSafetySummerOvertime']))
-        const collegeExcellent = parseDecimal(getField(row, ['院优', 'college_excellent', 'CollegeExcellent']))
-        
-        // 教学相关
-        const internationalStudentCourseFee = parseDecimal(getField(row, ['留学生课酬*75', '留学生课酬', 'international_student_course_fee', 'InternationalStudentCourseFee']))
-        const internetPlusShortSemester = parseDecimal(getField(row, ['互联网+短学期*30', '互联网+短学期', 'internet_plus_short_semester', 'InternetPlusShortSemester']))
-        const courseLeader = parseDecimal(getField(row, ['课程负责人', 'course_leader', 'CourseLeader']))
-        const auxiliaryTeachingWorkload = parseDecimal(getField(row, ['辅助教学工作量*35', '辅助教学工作量', 'auxiliary_teaching_workload', 'AuxiliaryTeachingWorkload']))
-        const textbookReward = parseDecimal(getField(row, ['编著教材奖励', 'textbook_reward', 'TextbookReward']))
-        const competitionWorkload = parseDecimal(getField(row, ['竞赛工作量*40', '竞赛工作量', 'competition_workload', 'CompetitionWorkload']))
-        const engineeringCollegeCourseFee = parseDecimal(getField(row, ['工程学院课酬', 'engineering_college_course_fee', 'EngineeringCollegeCourseFee']))
-        const engineeringCollegeManagementFee = parseDecimal(getField(row, ['工程学院管理费', 'engineering_college_management_fee', 'EngineeringCollegeManagementFee']))
-        const publicElectiveCourseFee = parseDecimal(getField(row, ['公选课课酬', 'public_elective_course_fee', 'PublicElectiveCourseFee']))
-        const teachingResearchReward = parseDecimal(getField(row, ['教研奖励', 'teaching_research_reward', 'TeachingResearchReward']))
-        const continuingEducationPaperReview = parseDecimal(getField(row, ['继教论文评审', 'continuing_education_paper_review', 'ContinuingEducationPaperReview']))
-        const teachingAchievementReward = parseDecimal(getField(row, ['教学成果奖励*40', '教学成果奖励', 'teaching_achievement_reward', 'TeachingAchievementReward']))
-        const extraSupplementWorkload = parseDecimal(getField(row, ['额外增补工作量*40', '额外增补工作量', 'extra_supplement_workload', 'ExtraSupplementWorkload']))
-        const extraTeachingSupplement = parseDecimal(getField(row, ['额外教学增补', 'extra_teaching_supplement', 'ExtraTeachingSupplement']))
-        const supervisionWorkload = parseDecimal(getField(row, ['督导工作量', 'supervision_workload', 'SupervisionWorkload']))
-        const invigilation = parseDecimal(getField(row, ['监考', 'invigilation', 'Invigilation']))
-        
-        // 管理相关
-        const collegeInstitution = parseDecimal(getField(row, ['院设机构', 'college_institution', 'CollegeInstitution']))
-        const teamLeader = parseDecimal(getField(row, ['团队负责人', 'team_leader', 'TeamLeader']))
-        
-        // 其他
-        const innovationCompetition = parseDecimal(getField(row, ['双创比赛', 'innovation_competition', 'InnovationCompetition']))
-        const culturalSportsActivity = parseDecimal(getField(row, ['文体活动*100', '文体活动', 'cultural_sports_activity', 'CulturalSportsActivity']))
-        const attendance = parseDecimal(getField(row, ['考勤1500', '考勤', 'attendance', 'Attendance']))
-        const graduateEntranceExam = parseDecimal(getField(row, ['研究生复试', 'graduate_entrance_exam', 'GraduateEntranceExam']))
-        const graduateBlindReview = parseDecimal(getField(row, ['研究生盲审', 'graduate_blind_review', 'GraduateBlindReview']))
-        const graduateWorkReward = parseDecimal(getField(row, ['研工奖励', 'graduate_work_reward', 'GraduateWorkReward']))
-        
-        // 扣除项
-        // 根据导入年份动态匹配赤字字段，例如：2025年导入匹配"2025赤字"，2026年导入匹配"2026赤字"
-        // 同时支持通用匹配："赤字"、"deficit"等
-        const deficitFieldNames = [
-          `${year}赤字`,  // 年份特定匹配，如"2025赤字"、"2026赤字"
-          '赤字',          // 通用匹配
-          'deficit',       // 英文通用匹配
-          'Deficit',       // 英文首字母大写
-          `deficit_${year}`, // 英文年份格式，如"deficit_2025"
-          `Deficit${year}`  // 英文年份格式，如"Deficit2025"
+        // 基础字段模式列表
+        const baseFieldPatterns = [
+          ['工作证号', '工号', 'work_id', 'WorkID', 'workId', '工号编号'],
+          ['身份证号', 'id_card', 'IDCard', '身份证', 'idCard', '身份证号码'],
+          ['部门', 'department', 'Department', '所属部门', 'dept'],
+          ['职级', 'position_level', 'PositionLevel', '职位', 'position', 'Position', '职务', '职称'],
+          ['name', 'Name', '姓名']
         ]
-        const deficit = parseDecimal(getField(row, deficitFieldNames))
-        const deductAdvancePerformance = parseDecimal(getField(row, ['扣除预支绩效', 'deduct_advance_performance', 'DeductAdvancePerformance']))
         
-        // 直接从Excel读取合计值，如果没有则为NULL（不自行计算）
-        const total = parseDecimal(getField(row, ['合计', 'total', 'Total', '总计']))
+        const excelKeys = Object.keys(row)
+        // 标记所有基础字段
+        for (const patterns of baseFieldPatterns) {
+          for (const pattern of patterns) {
+            const lowerPattern = pattern.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+            for (const key of excelKeys) {
+              const lowerKey = key.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+              if (lowerKey === lowerPattern || lowerKey.includes(lowerPattern) || lowerPattern.includes(lowerKey)) {
+                matchedBaseFieldKeys.add(key)
+                matchedColumns.add(key) // 标记为基础字段，已处理
+                break
+              }
+            }
+          }
+        }
         
-        // 插入或更新薪资明细
+        // 构建动态字段对象（存储Excel中除了基础字段外的所有字段）
+        const dynamicFields = {}
+        for (const key of excelKeys) {
+          // 跳过已匹配的基础字段
+          if (!matchedBaseFieldKeys.has(key)) {
+            // 标记为已处理（所有非基础字段都会存储到dynamic_fields）
+            matchedColumns.add(key)
+            // 存储字段值，如果是数字则转换为数字，否则保持原样
+            const value = row[key]
+            if (value !== null && value !== undefined && value !== '') {
+              const strValue = String(value).trim()
+              const numValue = parseFloat(strValue)
+              // 如果是有效数字，存储为数字；否则存储为字符串
+              dynamicFields[key] = !isNaN(numValue) && strValue !== '' ? numValue : strValue
+            }
+          }
+        }
+        
+        // 将dynamicFields转换为JSON字符串
+        const dynamicFieldsJson = Object.keys(dynamicFields).length > 0 ? JSON.stringify(dynamicFields) : null
+        
+        // 插入或更新薪资明细（使用动态字段）
         const salarySql = `
           INSERT INTO salary_details (
-            work_id, year,
-            research_platform, landmark_achievement, non_high_quality_research, high_quality_research_reward,
-            personnel_agency, enrollment, experiment_safety_summer_overtime, college_excellent,
-            international_student_course_fee, internet_plus_short_semester, course_leader, auxiliary_teaching_workload,
-            textbook_reward, competition_workload, engineering_college_course_fee, engineering_college_management_fee,
-            public_elective_course_fee, teaching_research_reward, continuing_education_paper_review, teaching_achievement_reward,
-            extra_supplement_workload, extra_teaching_supplement, supervision_workload, invigilation,
-            college_institution, team_leader, innovation_competition, cultural_sports_activity, attendance,
-            graduate_entrance_exam, graduate_blind_review, graduate_work_reward,
-            deficit, deduct_advance_performance, total
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            work_id, year, dynamic_fields
+          ) VALUES (?, ?, ?)
           ON DUPLICATE KEY UPDATE
-            research_platform = VALUES(research_platform),
-            landmark_achievement = VALUES(landmark_achievement),
-            non_high_quality_research = VALUES(non_high_quality_research),
-            high_quality_research_reward = VALUES(high_quality_research_reward),
-            personnel_agency = VALUES(personnel_agency),
-            enrollment = VALUES(enrollment),
-            experiment_safety_summer_overtime = VALUES(experiment_safety_summer_overtime),
-            college_excellent = VALUES(college_excellent),
-            international_student_course_fee = VALUES(international_student_course_fee),
-            internet_plus_short_semester = VALUES(internet_plus_short_semester),
-            course_leader = VALUES(course_leader),
-            auxiliary_teaching_workload = VALUES(auxiliary_teaching_workload),
-            textbook_reward = VALUES(textbook_reward),
-            competition_workload = VALUES(competition_workload),
-            engineering_college_course_fee = VALUES(engineering_college_course_fee),
-            engineering_college_management_fee = VALUES(engineering_college_management_fee),
-            public_elective_course_fee = VALUES(public_elective_course_fee),
-            teaching_research_reward = VALUES(teaching_research_reward),
-            continuing_education_paper_review = VALUES(continuing_education_paper_review),
-            teaching_achievement_reward = VALUES(teaching_achievement_reward),
-            extra_supplement_workload = VALUES(extra_supplement_workload),
-            extra_teaching_supplement = VALUES(extra_teaching_supplement),
-            supervision_workload = VALUES(supervision_workload),
-            invigilation = VALUES(invigilation),
-            college_institution = VALUES(college_institution),
-            team_leader = VALUES(team_leader),
-            innovation_competition = VALUES(innovation_competition),
-            cultural_sports_activity = VALUES(cultural_sports_activity),
-            attendance = VALUES(attendance),
-            graduate_entrance_exam = VALUES(graduate_entrance_exam),
-            graduate_blind_review = VALUES(graduate_blind_review),
-            graduate_work_reward = VALUES(graduate_work_reward),
-            deficit = VALUES(deficit),
-            deduct_advance_performance = VALUES(deduct_advance_performance),
-            total = VALUES(total)
+            dynamic_fields = VALUES(dynamic_fields),
+            updated_at = CURRENT_TIMESTAMP
         `
         
-        await query(salarySql, [
-          workId, year,
-          researchPlatform, landmarkAchievement, nonHighQualityResearch, highQualityResearchReward,
-          personnelAgency, enrollment, experimentSafetySummerOvertime, collegeExcellent,
-          internationalStudentCourseFee, internetPlusShortSemester, courseLeader, auxiliaryTeachingWorkload,
-          textbookReward, competitionWorkload, engineeringCollegeCourseFee, engineeringCollegeManagementFee,
-          publicElectiveCourseFee, teachingResearchReward, continuingEducationPaperReview, teachingAchievementReward,
-          extraSupplementWorkload, extraTeachingSupplement, supervisionWorkload, invigilation,
-          collegeInstitution, teamLeader, innovationCompetition, culturalSportsActivity, attendance,
-          graduateEntranceExam, graduateBlindReview, graduateWorkReward,
-          deficit, deductAdvancePerformance, total
-        ])
+        await query(salarySql, [workId, year, dynamicFieldsJson])
         
         successCount++
         
@@ -286,6 +262,43 @@ async function importUsersFromExcel(filePath, year) {
     console.log(`成功: ${successCount} 条`)
     console.log(`失败: ${errorCount} 条`)
     console.log(`总计: ${data.length} 条`)
+    
+    // 统计字段处理情况
+    const unmatchedColumns = excelColumns.filter(col => !matchedColumns.has(col))
+    if (unmatchedColumns.length > 0) {
+      console.log(`\n⚠️  注意: 以下Excel列名未被处理（共${unmatchedColumns.length}列，可能为空值或空列）:`)
+      console.log(unmatchedColumns.join(', '))
+    }
+    
+    // 统计动态字段数量
+    if (data.length > 0 && data[0]) {
+      const sampleRow = data[0]
+      const baseFields = new Set()
+      const baseFieldPatterns = [
+        ['工作证号', '工号', 'work_id', 'WorkID', 'workId', '工号编号'],
+        ['身份证号', 'id_card', 'IDCard', '身份证', 'idCard', '身份证号码'],
+        ['部门', 'department', 'Department', '所属部门', 'dept'],
+        ['职级', 'position_level', 'PositionLevel', '职位', 'position', 'Position', '职务', '职称'],
+        ['name', 'Name', '姓名']
+      ]
+      
+      for (const patterns of baseFieldPatterns) {
+        for (const pattern of patterns) {
+          const lowerPattern = pattern.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+          for (const key of Object.keys(sampleRow)) {
+            const lowerKey = key.toLowerCase().replace(/\s+/g, '').replace(/[，,]/g, '')
+            if (lowerKey === lowerPattern || lowerKey.includes(lowerPattern) || lowerPattern.includes(lowerKey)) {
+              baseFields.add(key)
+            }
+          }
+        }
+      }
+      
+      const dynamicFieldCount = excelColumns.length - baseFields.size - unmatchedColumns.length
+      if (dynamicFieldCount > 0) {
+        console.log(`\n✓ 已识别 ${dynamicFieldCount} 个动态薪资字段，已存储到 dynamic_fields JSON 字段中`)
+      }
+    }
     
   } catch (error) {
     console.error('导入过程中发生错误:', error)

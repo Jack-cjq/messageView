@@ -58,6 +58,16 @@ router.get('/users/:workId', async (req, res) => {
     const salarySql = 'SELECT * FROM salary_details WHERE work_id = ? AND year = ?'
     const salaryResults = await query(salarySql, [workId, year])
 
+    // 处理薪资数据，解析dynamic_fields
+    let salaryData = null
+    if (salaryResults.length > 0) {
+      const salary = salaryResults[0]
+      salaryData = {
+        ...salary,
+        dynamicFields: salary.dynamic_fields ? (typeof salary.dynamic_fields === 'string' ? JSON.parse(salary.dynamic_fields) : salary.dynamic_fields) : {}
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -68,7 +78,7 @@ router.get('/users/:workId', async (req, res) => {
         positionLevel: user.position_level,
         createdAt: user.created_at,
         updatedAt: user.updated_at,
-        salary: salaryResults.length > 0 ? salaryResults[0] : null,
+        salary: salaryData,
         year: parseInt(year)
       }
     })
@@ -174,11 +184,11 @@ router.put('/users/:workId', async (req, res) => {
   }
 })
 
-// 更新用户薪资明细
+// 更新用户薪资明细（使用dynamic_fields）
 router.put('/users/:workId/salary', async (req, res) => {
   try {
     const { workId } = req.params
-    const { year, ...salaryData } = req.body
+    const { year, dynamicFields } = req.body
 
     if (!year) {
       return res.status(400).json({
@@ -187,61 +197,21 @@ router.put('/users/:workId/salary', async (req, res) => {
       })
     }
 
-    // 构建更新字段（排除id和work_id）
-    const excludeFields = ['id', 'work_id', 'created_at', 'updated_at']
-    const updates = []
-    const values = []
-
-    // 薪资明细的所有字段
-    const salaryFields = [
-      'year', 'research_platform', 'landmark_achievement', 'non_high_quality_research',
-      'high_quality_research_reward', 'personnel_agency', 'enrollment',
-      'experiment_safety_summer_overtime', 'college_excellent', 'international_student_course_fee',
-      'internet_plus_short_semester', 'course_leader', 'auxiliary_teaching_workload',
-      'textbook_reward', 'competition_workload', 'engineering_college_course_fee',
-      'engineering_college_management_fee', 'public_elective_course_fee', 'teaching_research_reward',
-      'continuing_education_paper_review', 'teaching_achievement_reward', 'extra_supplement_workload',
-      'extra_teaching_supplement', 'supervision_workload', 'invigilation',
-      'college_institution', 'team_leader', 'innovation_competition',
-      'cultural_sports_activity', 'attendance', 'graduate_entrance_exam',
-      'graduate_blind_review', 'graduate_work_reward', 'deficit',
-      'deduct_advance_performance', 'total'
-    ]
-
-    for (const field of salaryFields) {
-      if (salaryData.hasOwnProperty(field) && !excludeFields.includes(field)) {
-        updates.push(`${field} = ?`)
-        // 处理空值，转换为null
-        const value = salaryData[field] === '' || salaryData[field] === null ? null : parseFloat(salaryData[field])
-        values.push(isNaN(value) ? null : value)
-      }
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: '没有要更新的字段'
-      })
-    }
+    // 将dynamicFields转换为JSON字符串
+    const dynamicFieldsJson = dynamicFields && Object.keys(dynamicFields).length > 0 
+      ? JSON.stringify(dynamicFields) 
+      : null
 
     // 使用 INSERT ... ON DUPLICATE KEY UPDATE
-    const insertFields = ['work_id', 'year', ...updates.map(u => u.split(' = ')[0])]
-    const insertPlaceholders = insertFields.map(() => '?').join(', ')
-    const insertValues = [workId, year, ...values]
-    
-    // 构建更新子句
-    const updateClause = updates.map(update => {
-      const field = update.split(' = ')[0]
-      return `${field} = VALUES(${field})`
-    }).join(', ')
-
     const sql = `
-      INSERT INTO salary_details (${insertFields.join(', ')})
-      VALUES (${insertPlaceholders})
-      ON DUPLICATE KEY UPDATE ${updateClause}
+      INSERT INTO salary_details (work_id, year, dynamic_fields)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        dynamic_fields = VALUES(dynamic_fields),
+        updated_at = CURRENT_TIMESTAMP
     `
 
-    await query(sql, insertValues)
+    await query(sql, [workId, year, dynamicFieldsJson])
 
     res.json({
       success: true,

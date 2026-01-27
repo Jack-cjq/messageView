@@ -38,11 +38,11 @@
             </div>
           </div>
           
-          <!-- 合计 -->
-          <div v-if="userInfo.salary && userInfo.salary.total !== null && userInfo.salary.total !== undefined" class="total-section">
+          <!-- 合计 - 优先显示dynamicFields中的合计字段 -->
+          <div v-if="userInfo.salary && (getTotalValue() !== null && getTotalValue() !== undefined)" class="total-section">
             <div class="total-item">
               <span class="total-label">合计</span>
-              <span class="total-value">{{ formatMoney(userInfo.salary.total) }}</span>
+              <span class="total-value">{{ formatMoney(getTotalValue()) }}</span>
             </div>
           </div>
         </div>
@@ -66,182 +66,28 @@
           </div>
           
           <div v-if="userInfo.salary">
-            <!-- 科研相关 -->
+            <!-- 动态显示所有薪资字段（过滤掉值为0的字段） -->
             <div class="salary-group">
-            <h5 class="group-title">科研相关</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">科研平台</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.research_platform) }}</span>
+              <div class="salary-card">
+                <div 
+                  v-for="(value, fieldName) in filteredDynamicFields" 
+                  :key="fieldName"
+                  class="salary-item"
+                >
+                  <span class="salary-label">{{ fieldName }}</span>
+                  <span 
+                    class="salary-value"
+                    :class="{ 'negative': isNegativeValue(value) }"
+                  >
+                    {{ formatMoney(value) }}
+                  </span>
+                </div>
+                
+                <!-- 如果没有动态字段，显示提示 -->
+                <div v-if="!filteredDynamicFields || Object.keys(filteredDynamicFields).length === 0" class="no-data-message">
+                  暂无薪资明细数据
+                </div>
               </div>
-              <div class="salary-item">
-                <span class="salary-label">标志性成果</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.landmark_achievement) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">非高质量科研*10</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.non_high_quality_research) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">高质量科研奖励*40</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.high_quality_research_reward) }}</span>
-              </div>
-            </div>
-            </div>
-
-            <!-- 人事相关 -->
-            <div class="salary-group">
-            <h5 class="group-title">人事相关</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">人事代发</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.personnel_agency) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">招生</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.enrollment) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">实验安全、暑假加班</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.experiment_safety_summer_overtime) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">院优</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.college_excellent) }}</span>
-              </div>
-            </div>
-            </div>
-
-            <!-- 教学相关 -->
-            <div class="salary-group">
-            <h5 class="group-title">教学相关</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">留学生课酬*75</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.international_student_course_fee) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">互联网+短学期*30</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.internet_plus_short_semester) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">课程负责人</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.course_leader) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">辅助教学工作量*35</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.auxiliary_teaching_workload) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">编著教材奖励</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.textbook_reward) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">竞赛工作量*40</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.competition_workload) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">工程学院课酬</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.engineering_college_course_fee) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">工程学院管理费</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.engineering_college_management_fee) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">公选课课酬</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.public_elective_course_fee) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">教研奖励</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.teaching_research_reward) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">继教论文评审</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.continuing_education_paper_review) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">教学成果奖励*40</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.teaching_achievement_reward) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">额外增补工作量*40</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.extra_supplement_workload) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">额外教学增补</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.extra_teaching_supplement) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">督导工作量</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.supervision_workload) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">监考</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.invigilation) }}</span>
-              </div>
-            </div>
-            </div>
-
-            <!-- 管理相关 -->
-            <div class="salary-group">
-            <h5 class="group-title">管理相关</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">院设机构</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.college_institution) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">团队负责人</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.team_leader) }}</span>
-              </div>
-            </div>
-            </div>
-
-            <!-- 其他 -->
-            <div class="salary-group">
-            <h5 class="group-title">其他</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">双创比赛</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.innovation_competition) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">文体活动*100</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.cultural_sports_activity) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">考勤1500</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.attendance) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">研究生复试</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.graduate_entrance_exam) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">研究生盲审</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.graduate_blind_review) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">研工奖励</span>
-                <span class="salary-value">{{ formatMoney(userInfo.salary.graduate_work_reward) }}</span>
-              </div>
-            </div>
-            </div>
-
-            <!-- 扣除项 -->
-            <div class="salary-group">
-            <h5 class="group-title">扣除项</h5>
-            <div class="salary-card">
-              <div class="salary-item">
-                <span class="salary-label">{{ selectedYear }}赤字</span>
-                <span class="salary-value negative">{{ formatMoney(userInfo.salary.deficit) }}</span>
-              </div>
-              <div class="salary-item">
-                <span class="salary-label">扣除预支绩效</span>
-                <span class="salary-value negative">{{ formatMoney(userInfo.salary.deduct_advance_performance) }}</span>
-              </div>
-            </div>
             </div>
           </div>
         </div>
@@ -300,6 +146,22 @@ export default {
       this.loading = false
     }
   },
+  computed: {
+    // 过滤掉值为0的字段
+    filteredDynamicFields() {
+      if (!this.userInfo || !this.userInfo.salary || !this.userInfo.salary.dynamicFields) {
+        return {}
+      }
+      const fields = {}
+      for (const [key, value] of Object.entries(this.userInfo.salary.dynamicFields)) {
+        // 过滤掉值为0、null、undefined、空字符串的字段
+        if (value !== null && value !== undefined && value !== '' && value !== 0) {
+          fields[key] = value
+        }
+      }
+      return fields
+    }
+  },
   methods: {
     async loadUserInfo() {
       const userInfoStr = localStorage.getItem('userInfo')
@@ -347,6 +209,27 @@ export default {
       localStorage.removeItem('token')
       // 跳转到登录页
       this.$router.push('/login')
+    },
+    getTotalValue() {
+      if (!this.userInfo || !this.userInfo.salary) return null
+      // 优先从dynamicFields中查找合计字段
+      if (this.userInfo.salary.dynamicFields) {
+        const totalFields = ['实发', '合计', 'total', 'Total', '总计', '应发']
+        for (const field of totalFields) {
+          if (this.userInfo.salary.dynamicFields[field] !== undefined && 
+              this.userInfo.salary.dynamicFields[field] !== null && 
+              this.userInfo.salary.dynamicFields[field] !== '') {
+            return this.userInfo.salary.dynamicFields[field]
+          }
+        }
+      }
+      // 如果没有找到，使用旧的total字段
+      return this.userInfo.salary.total
+    },
+    isNegativeValue(value) {
+      if (value === null || value === undefined || value === '') return false
+      const num = parseFloat(value)
+      return !isNaN(num) && num < 0
     },
     formatMoney(value) {
       if (value === null || value === undefined || value === '') return '-'

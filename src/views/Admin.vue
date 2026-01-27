@@ -130,198 +130,34 @@
           </div>
           
           <form @submit.prevent="handleUpdateSalary" class="salary-edit-form">
-            <!-- 科研相关 -->
-            <div class="salary-section">
-              <h4 class="section-title">科研相关</h4>
+            <!-- 动态字段编辑（过滤掉值为0的字段） -->
+            <div class="salary-section" v-if="editingSalary && editingSalary.dynamicFields && filteredEditingFields">
+              <h4 class="section-title">薪资明细（动态字段）</h4>
               <div class="salary-fields">
-                <div class="form-group">
-                  <label>科研平台</label>
-                  <input v-model.number="editingSalary.research_platform" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>标志性成果</label>
-                  <input v-model.number="editingSalary.landmark_achievement" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>非高质量科研*10</label>
-                  <input v-model.number="editingSalary.non_high_quality_research" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>高质量科研奖励*40</label>
-                  <input v-model.number="editingSalary.high_quality_research_reward" type="number" step="0.01" class="form-input" />
+                <div 
+                  v-for="(value, fieldName) in filteredEditingFields" 
+                  :key="fieldName"
+                  class="form-group"
+                >
+                  <label>{{ fieldName }}</label>
+                  <input 
+                    v-model.number="editingSalary.dynamicFields[fieldName]" 
+                    type="number" 
+                    step="0.01" 
+                    class="form-input" 
+                  />
                 </div>
               </div>
             </div>
-
-            <!-- 人事相关 -->
-            <div class="salary-section">
-              <h4 class="section-title">人事相关</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>人事代发</label>
-                  <input v-model.number="editingSalary.personnel_agency" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>招生</label>
-                  <input v-model.number="editingSalary.enrollment" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>实验安全、暑假加班</label>
-                  <input v-model.number="editingSalary.experiment_safety_summer_overtime" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>院优</label>
-                  <input v-model.number="editingSalary.college_excellent" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
-            </div>
-
-            <!-- 教学相关 -->
-            <div class="salary-section">
-              <h4 class="section-title">教学相关</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>留学生课酬*75</label>
-                  <input v-model.number="editingSalary.international_student_course_fee" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>互联网+短学期*30</label>
-                  <input v-model.number="editingSalary.internet_plus_short_semester" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>课程负责人</label>
-                  <input v-model.number="editingSalary.course_leader" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>辅助教学工作量*35</label>
-                  <input v-model.number="editingSalary.auxiliary_teaching_workload" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>编著教材奖励</label>
-                  <input v-model.number="editingSalary.textbook_reward" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>竞赛工作量*40</label>
-                  <input v-model.number="editingSalary.competition_workload" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>工程学院课酬</label>
-                  <input v-model.number="editingSalary.engineering_college_course_fee" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>工程学院管理费</label>
-                  <input v-model.number="editingSalary.engineering_college_management_fee" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>公选课课酬</label>
-                  <input v-model.number="editingSalary.public_elective_course_fee" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>教研奖励</label>
-                  <input v-model.number="editingSalary.teaching_research_reward" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>继教论文评审</label>
-                  <input v-model.number="editingSalary.continuing_education_paper_review" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>教学成果奖励*40</label>
-                  <input v-model.number="editingSalary.teaching_achievement_reward" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>额外增补工作量*40</label>
-                  <input v-model.number="editingSalary.extra_supplement_workload" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>额外教学增补</label>
-                  <input v-model.number="editingSalary.extra_teaching_supplement" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>督导工作量</label>
-                  <input v-model.number="editingSalary.supervision_workload" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>监考</label>
-                  <input v-model.number="editingSalary.invigilation" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
-            </div>
-
-            <!-- 管理相关 -->
-            <div class="salary-section">
-              <h4 class="section-title">管理相关</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>院设机构</label>
-                  <input v-model.number="editingSalary.college_institution" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>团队负责人</label>
-                  <input v-model.number="editingSalary.team_leader" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
-            </div>
-
-            <!-- 其他 -->
-            <div class="salary-section">
-              <h4 class="section-title">其他</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>双创比赛</label>
-                  <input v-model.number="editingSalary.innovation_competition" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>文体活动*100</label>
-                  <input v-model.number="editingSalary.cultural_sports_activity" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>考勤1500</label>
-                  <input v-model.number="editingSalary.attendance" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>研究生复试</label>
-                  <input v-model.number="editingSalary.graduate_entrance_exam" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>研究生盲审</label>
-                  <input v-model.number="editingSalary.graduate_blind_review" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>研工奖励</label>
-                  <input v-model.number="editingSalary.graduate_work_reward" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
-            </div>
-
-            <!-- 扣除项 -->
-            <div class="salary-section">
-              <h4 class="section-title">扣除项</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>{{ selectedYear }}赤字</label>
-                  <input v-model.number="editingSalary.deficit" type="number" step="0.01" class="form-input" />
-                </div>
-                <div class="form-group">
-                  <label>扣除预支绩效</label>
-                  <input v-model.number="editingSalary.deduct_advance_performance" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
-            </div>
-
-            <!-- 合计 -->
-            <div class="salary-section">
-              <h4 class="section-title">合计</h4>
-              <div class="salary-fields">
-                <div class="form-group">
-                  <label>合计</label>
-                  <input v-model.number="editingSalary.total" type="number" step="0.01" class="form-input" />
-                </div>
-              </div>
+            
+            <!-- 如果没有动态字段，显示提示 -->
+            <div v-else class="no-data-message">
+              该年份暂无薪资明细数据，请先上传Excel文件
             </div>
 
             <div class="form-actions">
               <button type="button" class="cancel-btn" @click="showEditDialog = false">取消</button>
-              <button type="submit" class="save-btn" :disabled="loading">保存薪资明细</button>
+              <button type="submit" class="save-btn" :disabled="loading || !editingSalary || !editingSalary.dynamicFields">保存薪资明细</button>
             </div>
           </form>
         </div>
@@ -375,6 +211,22 @@ import { getAllUsers, getUserDetail, updateUser, updateUserSalary, deleteAllUser
 
 export default {
   name: 'Admin',
+  computed: {
+    // 过滤掉值为0的字段（用于编辑表单显示）
+    filteredEditingFields() {
+      if (!this.editingSalary || !this.editingSalary.dynamicFields) {
+        return {}
+      }
+      const fields = {}
+      for (const [key, value] of Object.entries(this.editingSalary.dynamicFields)) {
+        // 过滤掉值为0、null、undefined、空字符串的字段
+        if (value !== null && value !== undefined && value !== '' && value !== 0) {
+          fields[key] = value
+        }
+      }
+      return fields
+    }
+  },
   data() {
     return {
       users: [],
@@ -422,7 +274,11 @@ export default {
         const response = await getUserDetail(user.workId, this.selectedYear)
         if (response.success) {
           this.editingUser = { ...response.data }
-          this.editingSalary = response.data.salary ? { ...response.data.salary } : {}
+          const salary = response.data.salary
+          this.editingSalary = salary ? {
+            ...salary,
+            dynamicFields: salary.dynamicFields || {}
+          } : { dynamicFields: {} }
           this.selectedYear = response.data.year || new Date().getFullYear()
           this.activeTab = 'basic'
           this.showEditDialog = true
@@ -442,7 +298,16 @@ export default {
       try {
         const response = await getUserDetail(this.editingUser.workId, this.selectedYear)
         if (response.success) {
-          this.editingSalary = response.data.salary ? { ...response.data.salary } : {}
+          const salary = response.data.salary
+          if (salary) {
+            // 确保dynamicFields存在
+            this.editingSalary = {
+              ...salary,
+              dynamicFields: salary.dynamicFields || {}
+            }
+          } else {
+            this.editingSalary = { dynamicFields: {} }
+          }
         } else {
           alert('加载薪资明细失败: ' + (response.message || '未知错误'))
         }
@@ -479,7 +344,7 @@ export default {
       try {
         const salaryData = {
           year: this.selectedYear,
-          ...this.editingSalary
+          dynamicFields: this.editingSalary.dynamicFields || {}
         }
         
         const response = await updateUserSalary(this.editingUser.workId, salaryData)
